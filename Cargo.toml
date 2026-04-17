@@ -1,0 +1,57 @@
+[workspace]
+members = [
+    "crates/gguf",
+    "crates/core",
+    "crates/server",
+    "crates/cli",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/riallm/ria"
+description = "RIA Platform - Memory-optimized LLM inference with agentic coding capabilities"
+
+[workspace.dependencies]
+# Internal crates
+ria-gguf = { path = "crates/gguf" }
+ria-core = { path = "crates/core" }
+ria-server = { path = "crates/server" }
+ria-cli = { path = "crates/cli" }
+
+# ML framework
+candle-core = { version = "0.8.0" }
+candle-nn = { version = "0.8.0" }
+candle-transformers = { version = "0.8.0" }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+
+# HTTP server
+axum = { version = "0.7", features = ["http2"] }
+tower = "0.5"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+
+# CLI
+clap = { version = "4.0", features = ["derive"] }
+indicatif = "0.17"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Logging
+tracing = "0.1"
+
+# Utilities
+memmap2 = "0.9"
+half = "2.0"
+rayon = "1.8"

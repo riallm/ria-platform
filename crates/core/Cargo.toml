@@ -1,0 +1,22 @@
+[package]
+name = "ria-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "RIA core inference engine - memory-optimized LLM inference"
+
+[dependencies]
+ria-gguf.workspace = true
+candle-core.workspace = true
+candle-nn.workspace = true
+candle-transformers.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+rayon.workspace = true
+memmap2.workspace = true
+indicatif.workspace = true
+tokenizers = { version = "0.19", features = ["onig"] }

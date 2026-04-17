@@ -1,0 +1,25 @@
+[package]
+name = "ria-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "RIA CLI - Command-line interface for RIA models"
+
+[[bin]]
+name = "ria"
+path = "src/main.rs"
+
+[dependencies]
+ria-core.workspace = true
+ria-gguf.workspace = true
+ria-server.workspace = true
+candle-core.workspace = true
+tokio.workspace = true
+axum.workspace = true
+clap.workspace = true
+indicatif.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true

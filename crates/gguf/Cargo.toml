@@ -1,0 +1,17 @@
+[package]
+name = "ria-gguf"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "GGUF binary format parser for RIA models"
+
+[dependencies]
+candle-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+memmap2.workspace = true
+half.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+rayon.workspace = true

@@ -1,26 +1,23 @@
 //! Router creation
 
+use crate::handlers::{self, AppState};
+use crate::server::ServerConfig;
 use axum::{
-    Router,
     routing::{get, post},
+    Router,
 };
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tower_http::cors::{CorsLayer, Any};
+use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
-use crate::handlers::{self, AppState};
-use crate::server::ServerConfig;
 
 /// Create the Axum router with all endpoints
-pub fn create_router(
-    state: Arc<Mutex<AppState>>,
-    config: &ServerConfig,
-) -> Router {
+pub fn create_router(state: Arc<Mutex<AppState>>, config: &ServerConfig) -> Router {
     let cors = CorsLayer::new()
         .allow_origin(Any)
         .allow_methods(Any)
         .allow_headers(Any);
-    
+
     Router::new()
         // OpenAI-compatible endpoints
         .route("/v1/completions", post(handlers::completions))

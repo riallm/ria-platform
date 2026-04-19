@@ -1,10 +1,10 @@
 //! Generation loop with sampling strategies
 
-use candle_core::{Tensor, Device, D};
-use crate::config::GenerationConfig;
-use crate::error::{Result, RIAError};
-use crate::model::RIAModel;
 use crate::cache::KVCache;
+use crate::config::GenerationConfig;
+use crate::error::{RIAError, Result};
+use crate::model::RIAModel;
+use candle_core::{Device, Tensor, D};
 
 /// Token generation output
 #[derive(Debug, Clone)]
@@ -57,17 +57,21 @@ impl Generator {
 
         // Get last token logits
         let seq_len = prompt_tokens.len();
-        let last_logits = logits.narrow(1, seq_len - 1, 1)?
-            .squeeze(0)?
-            .squeeze(0)?;
+        let last_logits = logits.narrow(1, seq_len - 1, 1)?.squeeze(0)?.squeeze(0)?;
 
         // Initialize recent tokens with prompt tokens (for repeat penalty)
-        let start_idx = prompt_tokens.len().saturating_sub(self.config.repeat_last_n);
+        let start_idx = prompt_tokens
+            .len()
+            .saturating_sub(self.config.repeat_last_n);
         self.recent_tokens = prompt_tokens[start_idx..].to_vec();
 
         // Sample first token
         let mut tokens = prompt_tokens.to_vec();
-        let mut logprobs = if self.config.logprobs { Some(vec![]) } else { None };
+        let mut logprobs = if self.config.logprobs {
+            Some(vec![])
+        } else {
+            None
+        };
 
         let mut current_logits = last_logits;
         let mut finish_reason = FinishReason::MaxTokens;
@@ -106,12 +110,10 @@ impl Generator {
             }
 
             // Forward pass for single token
-            let next_tensor = Tensor::from_slice(&[next_token], 1, device)?
-                .reshape((1, 1))?;
+            let next_tensor = Tensor::from_slice(&[next_token], 1, device)?.reshape((1, 1))?;
 
             let logits = model.forward(&next_tensor, &mut cache)?;
-            current_logits = logits.squeeze(0)?.squeeze(0)?
-                .narrow(0, 0, 1)?.squeeze(0)?;
+            current_logits = logits.squeeze(0)?.squeeze(0)?.narrow(0, 0, 1)?.squeeze(0)?;
         }
 
         Ok(GenerationOutput {
@@ -138,7 +140,8 @@ impl Generator {
 
         // Apply temperature
         let mut logits_vec = if self.config.temperature > 0.0 {
-            logits_vec.iter()
+            logits_vec
+                .iter()
                 .map(|&x| x / self.config.temperature as f32)
                 .collect::<Vec<_>>()
         } else {
@@ -151,7 +154,8 @@ impl Generator {
         // Sample based on config
         if self.config.temperature == 0.0 {
             // Greedy
-            let (idx, &max_val) = logits_vec.iter()
+            let (idx, &max_val) = logits_vec
+                .iter()
                 .enumerate()
                 .max_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap())
                 .ok_or_else(|| RIAError::Generation("Empty logits".to_string()))?;
@@ -206,18 +210,17 @@ impl Generator {
     /// Top-k sampling
     fn sample_top_k(&mut self, logits: &[f32], k: usize) -> Result<(u32, f32)> {
         // Get top-k indices
-        let mut indexed: Vec<(usize, f32)> = logits.iter()
-            .enumerate()
-            .map(|(i, &v)| (i, v))
-            .collect();
+        let mut indexed: Vec<(usize, f32)> =
+            logits.iter().enumerate().map(|(i, &v)| (i, v)).collect();
         indexed.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
         indexed.truncate(k);
 
         // Softmax over top-k
-        let max_val = indexed.iter().map(|(_, v)| *v).fold(f32::NEG_INFINITY, f32::max);
-        let exps: Vec<f32> = indexed.iter()
-            .map(|(_, v)| (v - max_val).exp())
-            .collect();
+        let max_val = indexed
+            .iter()
+            .map(|(_, v)| *v)
+            .fold(f32::NEG_INFINITY, f32::max);
+        let exps: Vec<f32> = indexed.iter().map(|(_, v)| (v - max_val).exp()).collect();
         let sum_exp: f32 = exps.iter().sum();
         let probs: Vec<f32> = exps.iter().map(|e| e / sum_exp).collect();
 
@@ -232,17 +235,16 @@ impl Generator {
     /// Top-p (nucleus) sampling
     fn sample_top_p(&mut self, logits: &[f32], p: f64) -> Result<(u32, f32)> {
         // Sort logits descending
-        let mut indexed: Vec<(usize, f32)> = logits.iter()
-            .enumerate()
-            .map(|(i, &v)| (i, v))
-            .collect();
+        let mut indexed: Vec<(usize, f32)> =
+            logits.iter().enumerate().map(|(i, &v)| (i, v)).collect();
         indexed.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
 
         // Softmax
-        let max_val = indexed.iter().map(|(_, v)| *v).fold(f32::NEG_INFINITY, f32::max);
-        let exps: Vec<f32> = indexed.iter()
-            .map(|(_, v)| (v - max_val).exp())
-            .collect();
+        let max_val = indexed
+            .iter()
+            .map(|(_, v)| *v)
+            .fold(f32::NEG_INFINITY, f32::max);
+        let exps: Vec<f32> = indexed.iter().map(|(_, v)| (v - max_val).exp()).collect();
         let sum_exp: f32 = exps.iter().sum();
         let mut probs: Vec<f32> = exps.iter().map(|e| e / sum_exp).collect();
 
@@ -302,7 +304,10 @@ impl Generator {
     /// Simple LCG random number generator
     fn rand_f32(&mut self) -> f32 {
         // Linear congruential generator
-        self.rng_state = self.rng_state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        self.rng_state = self
+            .rng_state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
         (self.rng_state >> 33) as f32 / (u32::MAX as f32)
     }
 }

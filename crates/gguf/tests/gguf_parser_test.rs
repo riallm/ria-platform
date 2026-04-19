@@ -2,7 +2,7 @@
 
 #[cfg(test)]
 mod tests {
-    use ria_gguf::{GGUFQuantizationType, dequantize_tensor};
+    use ria_gguf::{dequantize_tensor, GGUFQuantizationType};
 
     #[test]
     fn test_q4_0_dequantization() {
@@ -96,12 +96,30 @@ mod tests {
 
     #[test]
     fn test_quantization_type_from_u32() {
-        assert_eq!(GGUFQuantizationType::from_u32(0), Some(GGUFQuantizationType::F32));
-        assert_eq!(GGUFQuantizationType::from_u32(1), Some(GGUFQuantizationType::F16));
-        assert_eq!(GGUFQuantizationType::from_u32(2), Some(GGUFQuantizationType::Q4_0));
-        assert_eq!(GGUFQuantizationType::from_u32(3), Some(GGUFQuantizationType::Q4_1));
-        assert_eq!(GGUFQuantizationType::from_u32(8), Some(GGUFQuantizationType::Q8_0));
-        assert_eq!(GGUFQuantizationType::from_u32(12), Some(GGUFQuantizationType::Q4_K));
+        assert_eq!(
+            GGUFQuantizationType::from_u32(0),
+            Some(GGUFQuantizationType::F32)
+        );
+        assert_eq!(
+            GGUFQuantizationType::from_u32(1),
+            Some(GGUFQuantizationType::F16)
+        );
+        assert_eq!(
+            GGUFQuantizationType::from_u32(2),
+            Some(GGUFQuantizationType::Q4_0)
+        );
+        assert_eq!(
+            GGUFQuantizationType::from_u32(3),
+            Some(GGUFQuantizationType::Q4_1)
+        );
+        assert_eq!(
+            GGUFQuantizationType::from_u32(8),
+            Some(GGUFQuantizationType::Q8_0)
+        );
+        assert_eq!(
+            GGUFQuantizationType::from_u32(12),
+            Some(GGUFQuantizationType::Q4_K)
+        );
         assert_eq!(GGUFQuantizationType::from_u32(99), None);
     }
 

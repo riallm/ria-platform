@@ -1,11 +1,11 @@
 //! GGUF tensor info and data loading
 
-use std::fmt;
-use memmap2::Mmap;
-use candle_core::{Tensor, Device};
 use super::error::GGUFError;
 use super::header::{read_u32, read_u64};
-use super::quantization::{GGUFQuantizationType, dequantize_tensor};
+use super::quantization::{dequantize_tensor, GGUFQuantizationType};
+use candle_core::{Device, Tensor};
+use memmap2::Mmap;
+use std::fmt;
 
 /// GGUF tensor data alignment (bytes)
 pub const GGUF_ALIGNMENT: usize = 32;
@@ -66,31 +66,32 @@ impl GGUFTensorInfo {
             self.offset as usize
         }
     }
-    
+
     /// Parse tensor info from GGUF file
     pub fn parse(mmap: &Mmap, offset: &mut usize) -> crate::error::Result<Self> {
         // Name length + name
         let name_len = read_u32(mmap, offset)?;
         let name_bytes = &mmap[*offset..*offset + name_len as usize];
-        let name = String::from_utf8(name_bytes.to_vec())
-            .map_err(|e| GGUFError::TensorShapeError(format!("Invalid UTF-8 in tensor name: {}", e)))?;
+        let name = String::from_utf8(name_bytes.to_vec()).map_err(|e| {
+            GGUFError::TensorShapeError(format!("Invalid UTF-8 in tensor name: {}", e))
+        })?;
         *offset += name_len as usize;
-        
+
         // Number of dimensions
         let n_dimensions = read_u32(mmap, offset)?;
-        
+
         // Dimensions
         let mut dimensions = Vec::with_capacity(n_dimensions as usize);
         for _ in 0..n_dimensions {
             dimensions.push(read_u64(mmap, offset)?);
         }
-        
+
         // Tensor type
         let tensor_type = read_u32(mmap, offset)?;
-        
+
         // Offset to tensor data
         let offset_to_data = read_u64(mmap, offset)?;
-        
+
         Ok(Self {
             name,
             n_dimensions,
@@ -99,28 +100,32 @@ impl GGUFTensorInfo {
             offset: offset_to_data,
         })
     }
-    
+
     /// Load tensor data from memory-mapped file
-    pub fn load_data(&self, mmap: &Mmap, tensor_data_offset: usize) -> crate::error::Result<GGUFTensorData> {
+    pub fn load_data(
+        &self,
+        mmap: &Mmap,
+        tensor_data_offset: usize,
+    ) -> crate::error::Result<GGUFTensorData> {
         let quant_type = GGUFQuantizationType::from_u32(self.tensor_type)
             .ok_or_else(|| GGUFError::InvalidTensorType(self.tensor_type))?;
-        
+
         // Calculate tensor data size
         let block_size = quant_type.block_size();
         let quant_per_block = quant_type.quant_per_block();
         let num_blocks = (self.element_count() + quant_per_block - 1) / quant_per_block;
         let data_size = block_size * num_blocks;
-        
+
         // In GGUF, offset is absolute file offset from tensor data section start
         let data_start = tensor_data_offset + self.offset as usize;
         let data_end = data_start + data_size;
-        
+
         if data_end > mmap.len() {
             return Err(GGUFError::TensorDataOverflow);
         }
-        
+
         let data = &mmap[data_start..data_end];
-        
+
         Ok(GGUFTensorData {
             name: self.name.clone(),
             dimensions: self.dimensions.clone(),
@@ -128,7 +133,7 @@ impl GGUFTensorInfo {
             raw_data: data.to_vec(),
         })
     }
-    
+
     /// Get total number of elements
     pub fn element_count(&self) -> usize {
         self.dimensions.iter().product::<u64>() as usize
@@ -148,15 +153,15 @@ impl GGUFTensorData {
     pub fn element_count(&self) -> usize {
         self.dimensions.iter().product::<u64>() as usize
     }
-    
+
     /// Convert to Candle tensor
     pub fn to_candle_tensor(&self, device: &Device) -> crate::error::Result<Tensor> {
         let shape: Vec<usize> = self.dimensions.iter().map(|&d| d as usize).collect();
         let elem_count = self.element_count();
-        
+
         // Dequantize if necessary
         let data_f32 = dequantize_tensor(&self.raw_data, self.quant_type, elem_count)?;
-        
+
         // Create tensor from f32 data
         let tensor = Tensor::from_vec(data_f32, &*shape, device)?;
         Ok(tensor)

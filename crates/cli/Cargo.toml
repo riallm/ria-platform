@@ -10,7 +10,7 @@ name = "ria"
 path = "src/main.rs"
 
 [dependencies]
-ria-core.workspace = true
+ria-inference-core.workspace = true
 ria-gguf.workspace = true
 ria-server.workspace = true
 candle-core.workspace = true

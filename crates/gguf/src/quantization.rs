@@ -1,7 +1,7 @@
 //! GGUF quantization types and dequantization
 
+use super::error::{GGUFError, Result};
 use std::fmt;
-use super::error::{Result, GGUFError};
 
 /// GGUF quantization types
 #[derive(Debug, Clone, Copy)]
@@ -41,7 +41,7 @@ impl GGUFQuantizationType {
             _ => None,
         }
     }
-    
+
     /// Get GGUF type ID
     pub fn to_u32(&self) -> u32 {
         match self {
@@ -60,26 +60,26 @@ impl GGUFQuantizationType {
             Self::Q8_K => 15,
         }
     }
-    
+
     /// Block size in bytes
     pub fn block_size(&self) -> usize {
         match self {
             Self::F32 => 4,
             Self::F16 => 2,
-            Self::Q4_0 => 18,  // 2 (scale) + 16 (32 x 4-bit)
-            Self::Q4_1 => 20,  // 2 (scale) + 2 (min) + 16 (32 x 4-bit)
-            Self::Q5_0 => 22,  // 2 (scale) + 4 (qm) + 16 (32 x 4-bit)
-            Self::Q5_1 => 24,  // 2 (scale) + 2 (min) + 4 (qm) + 16 (32 x 4-bit)
-            Self::Q8_0 => 34,  // 2 (scale) + 32 (32 x 8-bit)
+            Self::Q4_0 => 18,                         // 2 (scale) + 16 (32 x 4-bit)
+            Self::Q4_1 => 20,                         // 2 (scale) + 2 (min) + 16 (32 x 4-bit)
+            Self::Q5_0 => 22,                         // 2 (scale) + 4 (qm) + 16 (32 x 4-bit)
+            Self::Q5_1 => 24, // 2 (scale) + 2 (min) + 4 (qm) + 16 (32 x 4-bit)
+            Self::Q8_0 => 34, // 2 (scale) + 32 (32 x 8-bit)
             Self::Q2_K => 256 / 4 + 256 / 16 + 2 + 2, // Approximate
             Self::Q3_K => 256 / 4 + 256 / 8 + 2 + 12, // Approximate
             Self::Q4_K => 256 / 2 + 2 + 2 + 256 / 16, // Approximate
-            Self::Q5_K => 256 / 2 + 2 + 2 + 256 / 8,  // Approximate
+            Self::Q5_K => 256 / 2 + 2 + 2 + 256 / 8, // Approximate
             Self::Q6_K => 256 * 6 / 8 + 256 / 16 + 256 / 32, // Approximate
             Self::Q8_K => 256, // Approximate
         }
     }
-    
+
     /// Number of weights quantized per block
     pub fn quant_per_block(&self) -> usize {
         match self {
@@ -88,7 +88,7 @@ impl GGUFQuantizationType {
             Self::Q2_K | Self::Q3_K | Self::Q4_K | Self::Q5_K | Self::Q6_K | Self::Q8_K => 256,
         }
     }
-    
+
     /// Bits per weight
     pub fn bits_per_weight(&self) -> f32 {
         match self {
@@ -143,38 +143,45 @@ pub fn dequantize_tensor(
         GGUFQuantizationType::Q5_K => dequantize_q5_k(data, element_count),
         GGUFQuantizationType::Q6_K => dequantize_q6_k(data, element_count),
         GGUFQuantizationType::Q8_K => dequantize_q8_k(data, element_count),
-        _ => Err(GGUFError::Quantization(format!("Unsupported quantization: {}", quant_type))),
+        _ => Err(GGUFError::Quantization(format!(
+            "Unsupported quantization: {}",
+            quant_type
+        ))),
     }
 }
 
 /// Dequantize F32 data
 fn dequantize_f32(data: &[u8]) -> super::error::Result<Vec<f32>> {
     if data.len() % 4 != 0 {
-        return Err(GGUFError::Quantization("Invalid F32 data length".to_string()));
+        return Err(GGUFError::Quantization(
+            "Invalid F32 data length".to_string(),
+        ));
     }
-    
+
     let mut result = Vec::with_capacity(data.len() / 4);
     for chunk in data.chunks_exact(4) {
         let val = f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
         result.push(val);
     }
-    
+
     Ok(result)
 }
 
 /// Dequantize F16 data
 fn dequantize_f16(data: &[u8]) -> super::error::Result<Vec<f32>> {
     if data.len() % 2 != 0 {
-        return Err(GGUFError::Quantization("Invalid F16 data length".to_string()));
+        return Err(GGUFError::Quantization(
+            "Invalid F16 data length".to_string(),
+        ));
     }
-    
+
     let mut result = Vec::with_capacity(data.len() / 2);
     for chunk in data.chunks_exact(2) {
         let bits = u16::from_le_bytes([chunk[0], chunk[1]]);
         let val = half::f16::from_bits(bits).to_f32();
         result.push(val);
     }
-    
+
     Ok(result)
 }
 
@@ -183,31 +190,31 @@ fn dequantize_f16(data: &[u8]) -> super::error::Result<Vec<f32>> {
 fn dequantize_q4_0(data: &[u8], element_count: usize) -> super::error::Result<Vec<f32>> {
     const QK4_0: usize = 32;
     const BLOCK_SIZE: usize = 18;
-    
+
     let num_blocks = (element_count + QK4_0 - 1) / QK4_0;
     let mut result = Vec::with_capacity(element_count);
-    
+
     for block_idx in 0..num_blocks {
         let block_start = block_idx * BLOCK_SIZE;
         if block_start + BLOCK_SIZE > data.len() {
             break;
         }
-        
+
         // Read scale (f16)
         let scale_bits = u16::from_le_bytes([data[block_start], data[block_start + 1]]);
         let scale = half::f16::from_bits(scale_bits).to_f32();
-        
+
         // Dequantize 32 values from 16 bytes
         for i in 0..16 {
             let byte = data[block_start + 2 + i];
             let lo = byte & 0x0F;
             let hi = (byte >> 4) & 0x0F;
-            
+
             result.push((lo as i8 as f32 - 8.0) * scale);
             result.push((hi as i8 as f32 - 8.0) * scale);
         }
     }
-    
+
     result.truncate(element_count);
     Ok(result)
 }
@@ -217,31 +224,31 @@ fn dequantize_q4_0(data: &[u8], element_count: usize) -> super::error::Result<Ve
 fn dequantize_q4_1(data: &[u8], element_count: usize) -> super::error::Result<Vec<f32>> {
     const QK4_1: usize = 32;
     const BLOCK_SIZE: usize = 20;
-    
+
     let num_blocks = (element_count + QK4_1 - 1) / QK4_1;
     let mut result = Vec::with_capacity(element_count);
-    
+
     for block_idx in 0..num_blocks {
         let block_start = block_idx * BLOCK_SIZE;
         if block_start + BLOCK_SIZE > data.len() {
             break;
         }
-        
+
         let scale_bits = u16::from_le_bytes([data[block_start], data[block_start + 1]]);
         let min_bits = u16::from_le_bytes([data[block_start + 2], data[block_start + 3]]);
         let scale = half::f16::from_bits(scale_bits).to_f32();
         let min = half::f16::from_bits(min_bits).to_f32();
-        
+
         for i in 0..16 {
             let byte = data[block_start + 4 + i];
             let lo = byte & 0x0F;
             let hi = (byte >> 4) & 0x0F;
-            
+
             result.push(lo as f32 * scale + min);
             result.push(hi as f32 * scale + min);
         }
     }
-    
+
     result.truncate(element_count);
     Ok(result)
 }
@@ -256,25 +263,25 @@ fn dequantize_q5_0(data: &[u8], element_count: usize) -> super::error::Result<Ve
 fn dequantize_q8_0(data: &[u8], element_count: usize) -> super::error::Result<Vec<f32>> {
     const QK8_0: usize = 32;
     const BLOCK_SIZE: usize = 34;
-    
+
     let num_blocks = (element_count + QK8_0 - 1) / QK8_0;
     let mut result = Vec::with_capacity(element_count);
-    
+
     for block_idx in 0..num_blocks {
         let block_start = block_idx * BLOCK_SIZE;
         if block_start + BLOCK_SIZE > data.len() {
             break;
         }
-        
+
         let scale_bits = u16::from_le_bytes([data[block_start], data[block_start + 1]]);
         let scale = half::f16::from_bits(scale_bits).to_f32();
-        
+
         for i in 0..32 {
             let val = data[block_start + 2 + i] as i8 as f32;
             result.push(val * scale);
         }
     }
-    
+
     result.truncate(element_count);
     Ok(result)
 }

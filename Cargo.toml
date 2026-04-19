@@ -17,7 +17,7 @@ description = "RIA Platform - Memory-optimized LLM inference with agentic coding
 [workspace.dependencies]
 # Internal crates
 ria-gguf = { path = "crates/gguf" }
-ria-core = { path = "crates/core" }
+ria-inference-core = { path = "crates/core" }
 ria-server = { path = "crates/server" }
 ria-cli = { path = "crates/cli" }
 

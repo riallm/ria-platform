@@ -6,7 +6,7 @@ license.workspace = true
 description = "RIA HTTP API server - OpenAI-compatible endpoints"
 
 [dependencies]
-ria-core.workspace = true
+ria-inference-core.workspace = true
 ria-gguf.workspace = true
 candle-core.workspace = true
 tokio.workspace = true

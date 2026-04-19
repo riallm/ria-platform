@@ -1,8 +1,10 @@
 //! GGUF metadata parsing
 
+use super::error::{GGUFError, Result};
+use super::header::{
+    read_f32, read_f64, read_i32, read_i64, read_string, read_u16, read_u32, read_u64, read_u8,
+};
 use memmap2::Mmap;
-use super::error::{Result, GGUFError};
-use super::header::{read_u8, read_u16, read_u32, read_u64, read_i32, read_i64, read_f32, read_f64, read_string};
 
 /// GGUF metadata value types
 #[derive(Debug, Clone)]
@@ -55,9 +57,12 @@ pub const METADATA_TYPE_I64: u32 = 11;
 pub const METADATA_TYPE_F64: u32 = 12;
 
 /// Parse a metadata value based on its type
-pub fn parse_metadata_value(mmap: &Mmap, offset: &mut usize) -> super::error::Result<MetadataValue> {
+pub fn parse_metadata_value(
+    mmap: &Mmap,
+    offset: &mut usize,
+) -> super::error::Result<MetadataValue> {
     let value_type = read_u32(mmap, offset)?;
-    
+
     match value_type {
         METADATA_TYPE_U8 => {
             let val = read_u8(mmap, offset)?;
@@ -120,5 +125,3 @@ pub fn parse_metadata_value(mmap: &Mmap, offset: &mut usize) -> super::error::Re
         _ => Err(GGUFError::InvalidMetadataType(value_type)),
     }
 }
-
-

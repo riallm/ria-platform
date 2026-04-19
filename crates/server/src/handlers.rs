@@ -1,18 +1,18 @@
 //! HTTP request handlers
 
+use crate::types::*;
 use axum::{
-    Json,
+    body::Body,
     extract::State,
     http::StatusCode,
     response::sse::{Event, Sse},
-    body::Body,
+    Json,
 };
+use futures::stream::Stream;
+use ria_core::{GenerationConfig, Generator, RIAModel, RIATokenizer};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio_stream::wrappers::ReceiverStream;
-use futures::stream::Stream;
-use crate::types::*;
-use ria_core::{RIAModel, Generator, GenerationConfig, RIATokenizer};
 
 /// Application state
 pub struct AppState {
@@ -34,7 +34,8 @@ pub async fn completions(
 
     // Encode prompt
     let prompt_tokens = if let Some(ref tokenizer) = state.tokenizer {
-        tokenizer.encode(&req.prompt, true)
+        tokenizer
+            .encode(&req.prompt, true)
             .map_err(|e| internal_error(format!("Tokenization failed: {}", e)))?
     } else {
         return Err((
@@ -62,12 +63,14 @@ pub async fn completions(
 
     // Generate
     let mut generator = Generator::new(gen_config);
-    let output = generator.generate(&state.model, &prompt_tokens)
+    let output = generator
+        .generate(&state.model, &prompt_tokens)
         .map_err(|e| internal_error(format!("Generation failed: {}", e)))?;
 
     // Decode output
     let text = if let Some(ref tokenizer) = state.tokenizer {
-        tokenizer.decode(&output.tokens, true)
+        tokenizer
+            .decode(&output.tokens, true)
             .map_err(|e| internal_error(format!("Decoding failed: {}", e)))?
     } else {
         format!("{:?}", output.tokens)
@@ -110,7 +113,8 @@ async fn completions_stream(
     let state = state.lock().await;
 
     let prompt_tokens = if let Some(ref tokenizer) = state.tokenizer {
-        tokenizer.encode(&req.prompt, true)
+        tokenizer
+            .encode(&req.prompt, true)
             .map_err(|e| internal_error(format!("Tokenization failed: {}", e)))?
     } else {
         return Err((
@@ -136,11 +140,13 @@ async fn completions_stream(
     };
 
     let mut generator = Generator::new(gen_config);
-    let output = generator.generate(&state.model, &prompt_tokens)
+    let output = generator
+        .generate(&state.model, &prompt_tokens)
         .map_err(|e| internal_error(format!("Generation failed: {}", e)))?;
 
     let text = if let Some(ref tokenizer) = state.tokenizer {
-        tokenizer.decode(&output.tokens, true)
+        tokenizer
+            .decode(&output.tokens, true)
             .map_err(|e| internal_error(format!("Decoding failed: {}", e)))?
     } else {
         format!("{:?}", output.tokens)
@@ -175,12 +181,13 @@ pub async fn chat_completions(
     Json(req): Json<ChatCompletionRequest>,
 ) -> Result<Json<ChatCompletionResponse>, (StatusCode, Json<serde_json::Value>)> {
     let state = state.lock().await;
-    
+
     // Format chat messages into prompt
     let prompt = format_chat_messages(&req.messages);
-    
+
     let prompt_tokens = if let Some(ref tokenizer) = state.tokenizer {
-        tokenizer.encode(&prompt, true)
+        tokenizer
+            .encode(&prompt, true)
             .map_err(|e| internal_error(format!("Tokenization failed: {}", e)))?
     } else {
         return Err((
@@ -188,9 +195,9 @@ pub async fn chat_completions(
             Json(serde_json::json!({"error": "Tokenizer not loaded"})),
         ));
     };
-    
+
     let prompt_len = prompt_tokens.len();
-    
+
     // Generate
     let gen_config = GenerationConfig {
         max_new_tokens: req.max_tokens,
@@ -205,20 +212,22 @@ pub async fn chat_completions(
         logprobs: false,
         seed: None,
     };
-    
+
     let mut generator = Generator::new(gen_config);
-    let output = generator.generate(&state.model, &prompt_tokens)
+    let output = generator
+        .generate(&state.model, &prompt_tokens)
         .map_err(|e| internal_error(format!("Generation failed: {}", e)))?;
-    
+
     let text = if let Some(ref tokenizer) = state.tokenizer {
-        tokenizer.decode(&output.tokens, true)
+        tokenizer
+            .decode(&output.tokens, true)
             .map_err(|e| internal_error(format!("Decoding failed: {}", e)))?
     } else {
         format!("{:?}", output.tokens)
     };
-    
+
     let completion_tokens = output.tokens.len();
-    
+
     Ok(Json(ChatCompletionResponse {
         id: format!("chatcmpl-{}", uuid_simple()),
         object: "chat.completion".to_string(),

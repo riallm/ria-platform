@@ -1734,8 +1734,8 @@ dependencies = [
  "candle-core",
  "clap",
  "indicatif",
- "ria-core",
  "ria-gguf",
+ "ria-inference-core",
  "ria-server",
  "serde_json",
  "serde_yaml",
@@ -1745,7 +1745,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "ria-core"
+name = "ria-gguf"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "candle-core",
+ "half",
+ "memmap2",
+ "rayon",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
+name = "ria-inference-core"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -1765,21 +1780,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ria-gguf"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "candle-core",
- "half",
- "memmap2",
- "rayon",
- "serde",
- "serde_json",
- "thiserror",
- "tracing",
-]
-
-[[package]]
 name = "ria-server"
 version = "0.1.0"
 dependencies = [
@@ -1787,8 +1787,8 @@ dependencies = [
  "axum",
  "candle-core",
  "futures",
- "ria-core",
  "ria-gguf",
+ "ria-inference-core",
  "serde",
  "serde_json",
  "tokio",

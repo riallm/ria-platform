@@ -9,7 +9,7 @@ use axum::{
     Json,
 };
 use futures::stream::Stream;
-use ria_core::{GenerationConfig, Generator, RIAModel, RIATokenizer};
+use ria_inference_core::{GenerationConfig, Generator, RIAModel, RIATokenizer};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio_stream::wrappers::ReceiverStream;
@@ -90,9 +90,12 @@ pub async fn completions(
             text,
             index: 0,
             finish_reason: match output.finish_reason {
-                ria_core::generation::FinishReason::StopToken => "stop".to_string(),
-                ria_core::generation::FinishReason::MaxTokens => "length".to_string(),
-                ria_core::generation::FinishReason::StopSequence(_) => "stop".to_string(),
+                ria_inference_core::generation::FinishReason
+::StopToken => "stop".to_string(),
+                ria_inference_core::generation::FinishReason
+::MaxTokens => "length".to_string(),
+                ria_inference_core::generation::FinishReason
+::StopSequence(_) => "stop".to_string(),
             },
         }],
         usage: UsageInfo {

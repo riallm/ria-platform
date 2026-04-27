@@ -90,12 +90,9 @@ pub async fn completions(
             text,
             index: 0,
             finish_reason: match output.finish_reason {
-                ria_inference_core::generation::FinishReason
-::StopToken => "stop".to_string(),
-                ria_inference_core::generation::FinishReason
-::MaxTokens => "length".to_string(),
-                ria_inference_core::generation::FinishReason
-::StopSequence(_) => "stop".to_string(),
+                ria_inference_core::generation::FinishReason::StopToken => "stop".to_string(),
+                ria_inference_core::generation::FinishReason::MaxTokens => "length".to_string(),
+                ria_inference_core::generation::FinishReason::StopSequence(_) => "stop".to_string(),
             },
         }],
         usage: UsageInfo {

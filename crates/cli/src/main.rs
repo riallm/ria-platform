@@ -145,8 +145,7 @@ async fn cmd_serve(
     max_seq_len: usize,
 ) -> anyhow::Result<()> {
     use candle_core::Device;
-    use ria_inference_core
-::{RIAModel, RIATokenizer};
+    use ria_inference_core::{RIAModel, RIATokenizer};
     use ria_server::{create_router, AppState, ServerConfig};
 
     println!("Loading model from {:?}", model_path);
@@ -200,8 +199,7 @@ async fn cmd_generate(
     device: &str,
 ) -> anyhow::Result<()> {
     use candle_core::Device;
-    use ria_inference_core
-::{GenerationConfig, Generator, RIAModel, RIATokenizer};
+    use ria_inference_core::{GenerationConfig, Generator, RIAModel, RIATokenizer};
 
     let device = parse_device(device)?;
     let model = RIAModel::from_gguf(model_path, device)?;
